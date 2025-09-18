@@ -7,10 +7,8 @@ import argparse
 import sys
 import subprocess
 
-
 __VERSION__ = "0.2"
 packagePattern = "([^ ]+)/([^ ]+) ([^ ]+)(\\( [^ ]+\\)|)?"
-
 
 def parse():
     parser = argparse.ArgumentParser(
@@ -49,16 +47,13 @@ def parse():
     )
     return parser.parse_args()
 
-
 def run(cmd):
     return os.popen(cmd).read()
-
 
 def runThrough(cmd):
     return subprocess.run(
         cmd, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr, shell=True
     )
-
 
 def getSortedPackageList(includeCore=False):
     repoOrder = ["core", "extra", "community", "multilib", "testing", ""]
@@ -72,19 +67,15 @@ def getSortedPackageList(includeCore=False):
         key=lambda word: [repoOrder.index(r) for r in repoOrder if word.startswith(r)],
     )
 
-
 def removePackages(packages, config=False):
     runThrough("sudo pacman -R{}s {}".format("n" if config else "", packages))
-
 
 def choose(message, options=["y", "n", "Y", "N", ""]):
     choice = None
     while choice not in options:
         print(message, end="")
         choice = input()
-        # print()
     return choice
-
 
 def main():
     args = parse()
@@ -114,10 +105,13 @@ def main():
                     )
                     continue
                 info = run("pacman -Qi {}".format(name)).splitlines()
+                description = "{}: <no description available>".format(package)
                 for line in info:
-                    if line.startswith("Description"):
-                        line = re.match("Description +: (.+)", line).group(1)
-                        description = "{}: {}".format(package, line)
+                    if line.startswith("Description") or line.startswith("Описание"):
+                        m = re.match(r"(Description|Описание)\s*:\s*(.+)", line)
+                        if m:
+                            description = "{}: {}".format(package, m.group(2))
+                            break
                 choice = choose("{}. --- Uninstall? [y/N]".format(description))
                 if choice in ["y", "Y"]:
                     if not args.remove_configs:
@@ -157,7 +151,6 @@ def main():
                 print()
         else:
             pass
-
 
 if __name__ == "__main__":
     main()
